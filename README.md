@@ -23,15 +23,4 @@ docker build -t $USER/tezos-ubuntu:latest -f Dockerfile-ubuntu .
 docker run --rm -it asbjornenge/tezos-ubuntu:latest tezos-node
 ```
 
-## Prebuilt
-
-I added a few prebuilt images to Docker Hub:
-
-```
-docker pull asbjornenge/tezos-ubuntu:latest
-docker pull asbjornenge/tezos-ubuntu-zeronet:latest
-docker pull asbjornenge/tezos-alpine:latest
-docker pull asbjornenge/tezos-alpine-zeronet:latest
-```
-
 enjoy.
