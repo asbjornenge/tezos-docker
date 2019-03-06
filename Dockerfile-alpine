@@ -69,16 +69,16 @@ RUN mkdir -p /var/run/tezos/node /var/run/tezos/client
 COPY --from=builder /_scripts/* /usr/local/share/tezos/
 COPY --from=builder /_bin/* /usr/local/bin/
 COPY --from=builder /tezos/tezos-node /usr/local/bin/
-COPY --from=builder /tezos/tezos-accuser-alpha /usr/local/bin/
+COPY --from=builder /tezos/tezos-accuser-* /usr/local/bin/
 COPY --from=builder /tezos/tezos-admin-client /usr/local/bin/
-COPY --from=builder /tezos/tezos-baker-alpha /usr/local/bin/
+COPY --from=builder /tezos/tezos-baker-* /usr/local/bin/
 COPY --from=builder /tezos/tezos-client /usr/local/bin/
-COPY --from=builder /tezos/tezos-endorser-alpha /usr/local/bin/
+COPY --from=builder /tezos/tezos-endorser-* /usr/local/bin/
 COPY --from=builder /tezos/tezos-node /usr/local/bin/
 COPY --from=builder /tezos/tezos-protocol-compiler /usr/local/bin/
 COPY --from=builder /tezos/tezos-signer /usr/local/bin/
 
-RUN useradd -ms /bin/bash tezos
+RUN addgroup -S tezos && adduser -S tezos -G tezos 
 USER tezos
 ENV USER=tezos
 
