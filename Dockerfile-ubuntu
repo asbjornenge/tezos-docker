@@ -1,0 +1,57 @@
+######################## build ###############################
+
+FROM ubuntu:latest as builder
+RUN apt-get update
+RUN apt-get install -y build-essential git m4 unzip rsync curl libev-dev libgmp-dev pkg-config libhidapi-dev
+RUN apt-get install -y wget libcap2
+RUN wget http://security.ubuntu.com/ubuntu/pool/universe/b/bubblewrap/bubblewrap_0.2.1-1_amd64.deb
+RUN dpkg -i ./bubblewrap_0.2.1-1_amd64.deb
+
+ARG net=mainnet
+RUN git clone https://gitlab.com/tezos/tezos.git
+WORKDIR tezos
+RUN git checkout $net 
+
+RUN wget https://github.com/ocaml/opam/releases/download/2.0.0-rc4/opam-2.0.0-rc4-x86_64-linux
+RUN mv opam-2.0.0-rc4-x86_64-linux /usr/local/bin/opam
+RUN chmod a+x /usr/local/bin/opam
+RUN opam init --comp=4.06.1 --disable-sandboxing
+RUN opam switch 4.06.1
+RUN opam update
+RUN make build-deps
+RUN eval $(opam config env) && make
+RUN mkdir /_scripts && mkdir /_bin
+RUN cp -a scripts/docker/entrypoint.sh /_bin/ && \
+  cp -a scripts/docker/entrypoint.inc.sh /_bin/ && \
+  cp scripts/alphanet.sh /_scripts/ && \
+  cp scripts/alphanet_version /_scripts/ && \
+  cp src/bin_client/bash-completion.sh /_scripts/ && \
+  cp active_protocol_versions /_scripts/
+
+######################### final ###############################
+
+FROM ubuntu:latest as final
+
+RUN apt-get update && \
+  apt-get install -y libev-dev libgmp-dev libhidapi-dev && \
+  apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN mkdir -p /var/run/tezos/node /var/run/tezos/client
+
+COPY --from=builder /_scripts/* /usr/local/share/tezos/
+COPY --from=builder /_bin/* /usr/local/bin/
+COPY --from=builder /tezos/tezos-node /usr/local/bin/
+COPY --from=builder /tezos/tezos-accuser-* /usr/local/bin/
+COPY --from=builder /tezos/tezos-admin-client /usr/local/bin/
+COPY --from=builder /tezos/tezos-baker-* /usr/local/bin/
+COPY --from=builder /tezos/tezos-client /usr/local/bin/
+COPY --from=builder /tezos/tezos-endorser-* /usr/local/bin/
+COPY --from=builder /tezos/tezos-node /usr/local/bin/
+COPY --from=builder /tezos/tezos-protocol-compiler /usr/local/bin/
+COPY --from=builder /tezos/tezos-signer /usr/local/bin/
+
+RUN useradd -ms /bin/bash tezos
+USER tezos
+ENV USER=tezos
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

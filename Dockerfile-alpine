@@ -1,0 +1,85 @@
+######################## opam ###############################
+FROM alpine:latest as opam
+
+RUN apk update && \
+    apk upgrade && \
+    apk add build-base snappy-dev alpine-sdk \
+            ocaml ocaml-compiler-libs ocamlfind \
+            bash ncurses-dev xz m4 git \
+    rm -f /var/cache/apk/* && \
+    adduser -S opam
+
+USER opam
+
+WORKDIR /home/opam
+
+RUN cd /home/opam && \
+    git clone --depth 1 -b 2.0.0 git://github.com/ocaml/opam  && \
+    cd /home/opam/opam && \
+    ./configure --prefix /usr
+
+RUN make -C opam lib-ext
+RUN make -C opam opam
+
+######################## build ###############################
+
+FROM alpine:edge as builder
+
+# I'm certain there is a better way to do this.
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+RUN apk update && apk upgrade && apk --no-cache add \
+  build-base snappy-dev alpine-sdk \
+  bash ncurses-dev xz m4 git pkgconfig \
+  gmp-dev libev-dev libressl-dev linux-headers pcre-dev perl zlib-dev hidapi-dev && \
+  rm -f /var/cache/apk/*
+
+ARG net=mainnet 
+RUN git clone https://gitlab.com/tezos/tezos.git
+
+WORKDIR tezos
+RUN git checkout $net 
+
+ENV OPAMYES=true
+
+COPY --from=opam /home/opam/opam/opam /usr/bin/opam
+
+RUN opam init --bare --disable-sandboxing
+RUN make build-deps
+
+RUN eval $(opam config env) && make
+RUN mkdir /_scripts && mkdir /_bin
+RUN cp -a scripts/docker/entrypoint.sh /_bin/ && \
+  cp -a scripts/docker/entrypoint.inc.sh /_bin/ && \
+  cp scripts/alphanet.sh /_scripts/ && \
+  cp scripts/alphanet_version /_scripts/ && \
+  cp src/bin_client/bash-completion.sh /_scripts/ && \
+  cp active_protocol_versions /_scripts/
+
+######################### final ###############################
+
+FROM alpine:edge as final
+
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+RUN apk update && apk upgrade && \
+  apk --no-cache add gmp libev hidapi && \
+  rm -f /var/cache/apk/*
+
+RUN mkdir -p /var/run/tezos/node /var/run/tezos/client
+
+COPY --from=builder /_scripts/* /usr/local/share/tezos/
+COPY --from=builder /_bin/* /usr/local/bin/
+COPY --from=builder /tezos/tezos-node /usr/local/bin/
+COPY --from=builder /tezos/tezos-accuser-alpha /usr/local/bin/
+COPY --from=builder /tezos/tezos-admin-client /usr/local/bin/
+COPY --from=builder /tezos/tezos-baker-alpha /usr/local/bin/
+COPY --from=builder /tezos/tezos-client /usr/local/bin/
+COPY --from=builder /tezos/tezos-endorser-alpha /usr/local/bin/
+COPY --from=builder /tezos/tezos-node /usr/local/bin/
+COPY --from=builder /tezos/tezos-protocol-compiler /usr/local/bin/
+COPY --from=builder /tezos/tezos-signer /usr/local/bin/
+
+RUN useradd -ms /bin/bash tezos
+USER tezos
+ENV USER=tezos
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
