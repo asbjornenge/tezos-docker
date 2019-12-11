@@ -10,6 +10,8 @@ WORKDIR tezos
 
 RUN curl -Lo - https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux >/usr/local/bin/opam && \
     chmod a+x /usr/local/bin/opam
+
+ENV OPAMROOTISOK=1
 RUN opam init --comp=4.06.1 --disable-sandboxing && \
     opam switch 4.06.1
 RUN opam update
