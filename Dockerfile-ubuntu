@@ -1,21 +1,17 @@
 ######################## build ###############################
 
 FROM ubuntu:18.04 as builder
-RUN apt-get update
-RUN apt-get install -y build-essential git m4 unzip rsync curl libev-dev libgmp-dev pkg-config libhidapi-dev
-RUN apt-get install -y wget libcap2
-RUN wget http://security.ubuntu.com/ubuntu/pool/universe/b/bubblewrap/bubblewrap_0.2.1-1_amd64.deb
-RUN dpkg -i ./bubblewrap_0.2.1-1_amd64.deb
+RUN apt-get update && \
+    apt-get install -y build-essential git m4 unzip rsync curl libev-dev libgmp-dev pkg-config libhidapi-dev libcap2
 
 ARG net=mainnet
 RUN git clone -b $net https://gitlab.com/tezos/tezos.git
 WORKDIR tezos
 
-RUN wget https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux && \
-    mv opam-2.0.5-x86_64-linux /usr/local/bin/opam && \
+RUN curl -Lo - https://github.com/ocaml/opam/releases/download/2.0.5/opam-2.0.5-x86_64-linux >/usr/local/bin/opam && \
     chmod a+x /usr/local/bin/opam
-RUN opam init --comp=4.06.1 --disable-sandboxing
-RUN opam switch 4.06.1
+RUN opam init --comp=4.06.1 --disable-sandboxing && \
+    opam switch 4.06.1
 RUN opam update
 RUN make build-deps
 RUN eval $(opam config env) && make
