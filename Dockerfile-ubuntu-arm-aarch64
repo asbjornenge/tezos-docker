@@ -21,7 +21,7 @@ RUN eval $(opam config env) && make
 RUN mkdir /_scripts && mkdir /_bin
 RUN cp -a scripts/docker/entrypoint.sh /_bin/ && \
   cp -a scripts/docker/entrypoint.inc.sh /_bin/ && \
-  cp scripts/alphanet.sh /_scripts/ && \
+  cp scripts/tezos-docker-manager.sh /_scripts/ && \
   cp scripts/alphanet_version /_scripts/ && \
   cp src/bin_client/bash-completion.sh /_scripts/ && \
   cp active_protocol_versions /_scripts/
